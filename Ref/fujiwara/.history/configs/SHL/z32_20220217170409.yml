@@ -1,0 +1,91 @@
+trainer: nae 
+logger: nae
+model:
+    arch: nae 
+    encoder: 
+        arch: conv1d 
+        nh: 8
+        nh_mlp: 1024
+        out_activation: linear 
+        use_spectral_norm: false 
+    decoder:
+        arch: deconv1d
+        nh: 8
+        out_activation: linear
+    nae:
+        buffer_size: 10000
+        gamma: 1
+        l2_norm_reg: null
+        l2_norm_reg_en: null
+        replay: true
+        replay_ratio: 0.95
+        sampling: on_manifold
+        spherical: true
+        temperature: 1.0
+        temperature_trainable: false
+        x_bound:
+        - 0
+        - 1
+        x_clip_langevin_grad: 0.01
+        x_noise_anneal: 1
+        x_noise_std: 0.02
+        x_step: 40
+        x_stepsize: 10
+        z_bound: null
+        z_clip_langevin_grad: null
+        z_noise_anneal: null
+        z_noise_std: 0.02
+        z_step: 20
+        z_stepsize: 1
+    x_dim: 6 #CNNに入るチャンネル数
+    z_dim: 64 #潜在空間でのチャンネル数
+data:
+    indist_train:
+        dataset: SHLLeaveOut
+        use_class: [1,2,4,5]
+        path: datasets
+        shuffle: True
+        batch_size: 128
+        n_workers: 0 #8
+        split: training
+        size: None
+        dequant:
+          UniformDequantize: {}
+    indist_val:
+        dataset: SHLLeaveOut
+        use_class: [1,2,4,5]
+        path: datasets
+        batch_size: 128
+        n_workers: 0 #8
+        split: in_validation
+        size: None
+    ood_val:
+        dataset: SHLLeaveOut
+        use_class: [1,2,4,5]
+        size: None
+        channel: 1
+        path: datasets
+        split: in_validation
+        n_workers: 0 #4
+        batch_size: 128
+    ood_target:
+        dataset: SHLLeaveOut
+        use_class: [7]
+        size: None
+        channel: 1
+        path: datasets
+        split: out_validation
+        n_workers: 0 #4
+        batch_size: 128
+training:
+    ae_epoch: #180
+    ae_lr: 0.0001
+    fix_D: false
+    lr_schedule: null
+    nae_epoch: 10
+    nae_lr: 1.0e-05
+    print_interval: 352
+    resume: null
+    save_interval: 2000
+    temperature_lr: 0.001
+    val_interval: 352
