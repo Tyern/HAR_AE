@@ -108,20 +108,25 @@ class Classifier1D(L.LightningModule):
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
         x, y = batch
         output = self.forward(x)
-        loss = F.mse_loss(output, x)
+        loss = F.cross_entropy(output, y)
 
-        self.log("train_mse", loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
     
     def validation_step(self,  batch, batch_idx) -> STEP_OUTPUT:
         x, y = batch
         output = self.forward(x)
-        loss = F.mse_loss(output, x)
-        self.log("val_mse", loss, prog_bar=True)
+        loss = F.cross_entropy(output, y)
+        self.log("val_loss", loss, prog_bar=True)
+
+        acc = (torch.argmax(output, dim=1) == y).sum() / len(y)
+        self.log("val_acc", acc, prog_bar=True)
 
     def test_step(self,  batch, batch_idx) -> STEP_OUTPUT:
         x, y = batch
         output = self.forward(x)
-        loss = F.mse_loss(output, x)
-        self.log("test_mse", loss, prog_bar=False)
-    
+        loss = F.cross_entropy(output, y)
+        self.log("test_loss", loss, prog_bar=False)
+
+        acc = (torch.argmax(output, dim=1) == y).sum() / len(y)
+        self.log("test_acc", acc, prog_bar=True)
