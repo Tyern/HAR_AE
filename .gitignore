@@ -4,4 +4,4 @@
 /.vscode
 *.pyc
 *.out
-./0*.py
+/0*.py
