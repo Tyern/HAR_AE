@@ -2,3 +2,5 @@
 /dataset
 /lightning_logs
 /.vscode
+*.pyc
+*.out
