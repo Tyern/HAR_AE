@@ -17,9 +17,9 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 from torch.optim import Optimizer
 
 from model.AE_model import AE1D_simple
+from model.base_model import ClassifierBaseModel
 
-
-class AE1DClassifier_simple(L.LightningModule):
+class AE1DClassifier_simple(ClassifierBaseModel):
     def __init__(self, AE1D_ckpt_path, optimizer: Optimizer=None, optimizer_param: dict=None):
         super().__init__()
         self.save_hyperparameters()
@@ -48,37 +48,3 @@ class AE1DClassifier_simple(L.LightningModule):
         out = self.cont_classifier(out)
         return out
     
-    
-    def configure_optimizers(self) -> OptimizerLRScheduler:
-        if self.hparams.optimizer is None or self.hparams.optimizer_param is None:
-            raise NotImplementedError("optimizer or optimizer_param have not been set")
-        
-        return self.hparams.optimizer(
-            self.parameters(),
-            **self.hparams.optimizer_param)
-    
-    def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.cross_entropy(output, y)
-
-        self.log("train_loss", loss, prog_bar=True)
-        return loss
-    
-    def validation_step(self,  batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.cross_entropy(output, y)
-        self.log("val_loss", loss, prog_bar=True)
-
-        acc = (torch.argmax(output, dim=1) == y).sum() / len(y)
-        self.log("val_acc", acc, prog_bar=True)
-
-    def test_step(self,  batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.cross_entropy(output, y)
-        self.log("test_loss", loss, prog_bar=False)
-
-        acc = (torch.argmax(output, dim=1) == y).sum() / len(y)
-        self.log("test_acc", acc, prog_bar=True)

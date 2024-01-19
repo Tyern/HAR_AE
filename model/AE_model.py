@@ -16,7 +16,9 @@ from torch.utils.data import DataLoader, Dataset
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 from torch.optim import Optimizer
 
-class AE1D_simple(L.LightningModule):
+from model.base_model import AEBaseModel
+
+class AE1D_simple(AEBaseModel):
     def __init__(self, optimizer: Optimizer=None, optimizer_param: dict=None):
         super().__init__()
         self.save_hyperparameters()
@@ -55,32 +57,3 @@ class AE1D_simple(L.LightningModule):
         out = self.dec_linear(out)
         out = self.decoder(out.view(out.shape[0], 64, 26))
         return out
-    
-    def configure_optimizers(self) -> OptimizerLRScheduler:
-        if self.hparams.optimizer is None or self.hparams.optimizer_param is None:
-            raise NotImplementedError("optimizer or optimizer_param have not been set")
-        
-        return self.hparams.optimizer(
-            self.parameters(),
-            **self.hparams.optimizer_param)
-    
-    def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.mse_loss(output, x)
-
-        self.log("train_mse", loss, prog_bar=True)
-        return loss
-    
-    def validation_step(self,  batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.mse_loss(output, x)
-        self.log("val_mse", loss, prog_bar=True)
-
-    def test_step(self,  batch, batch_idx) -> STEP_OUTPUT:
-        x, y = batch
-        output = self.forward(x)
-        loss = F.mse_loss(output, x)
-        self.log("test_mse", loss, prog_bar=False)
-    
