@@ -76,6 +76,7 @@ class AECNN1DModel(AEBaseModel):
         self.save_hyperparameters()
         self.example_input_array = torch.rand(10, 6, 257)
         
+        # define the cnn encoding sequential model
         enc_cnn_list = []
         for cnn_channel in cnn_channel_param:
             enc_cnn_list.extend([
@@ -90,10 +91,22 @@ class AECNN1DModel(AEBaseModel):
                 nn.Dropout(p=0.5),
             ])
         self.enc_cnn = nn.Sequential(*enc_cnn_list)
-
-        self.example_temp_out = self.enc_cnn(self.example_input_array)
+        
+        # get the list of output windows size
+        output_window_size_list = [self.example_input_array.shape[-1]]
+        for layer_idx in range(len(enc_cnn_list)):
+            if isinstance(enc_cnn_list[layer_idx], nn.Conv1d):
+                cnn_temp = nn.Sequential(*enc_cnn_list[:layer_idx + 1])
+                with torch.inference_mode():
+                    out = cnn_temp(self.example_input_array)
+                    output_window_size_list.append(out.shape[-1])
+                
+        # get the output of cnn encoding sequential model
+        with torch.inference_mode():
+            self.example_temp_out = self.enc_cnn(self.example_input_array)
         lin_in_features = self.example_temp_out.shape[1:].numel()
 
+        # define the linear encoding sequential model
         enc_linear_list = []
         for linear_channel_idx in range(len(linear_channel_param)):
 
@@ -106,6 +119,7 @@ class AECNN1DModel(AEBaseModel):
 
         self.enc_linear = nn.Sequential(*enc_linear_list)
 
+        # define the linear decoding sequential model
         dec_linear_list = []
         for linear_channel_idx in range(len(linear_channel_param) - 2, -1, -1):
 
@@ -123,10 +137,18 @@ class AECNN1DModel(AEBaseModel):
         
         self.dec_linear = nn.Sequential(*dec_linear_list)
         
+        # define the cnn decoding sequential model
+        current_windows_size = output_window_size_list[-1]
+        
         dec_cnn_list = []
-        for cnn_channel_idx in range(len(linear_channel_param) - 1, -1, -1):
+        for cnn_channel_idx in range(len(cnn_channel_param) - 1, -1, -1):
+            
             cnn_channel = cnn_channel_param[cnn_channel_idx]
-
+            
+            # calculate the difference the output and pre output padding
+            pre_pad_windows_size = (current_windows_size - 1)*cnn_channel[4] -2*cnn_channel[3] + cnn_channel[2]
+            current_windows_size = output_window_size_list[cnn_channel_idx]
+            
             dec_cnn_list.extend([
                 nn.ConvTranspose1d(
                     in_channels=cnn_channel[1], 
@@ -134,7 +156,7 @@ class AECNN1DModel(AEBaseModel):
                     kernel_size=cnn_channel[2], 
                     padding=cnn_channel[3], 
                     stride=cnn_channel[4],
-                    output_padding=1
+                    output_padding=current_windows_size - pre_pad_windows_size
                 ),
                 nn.ReLU(),
             ])
