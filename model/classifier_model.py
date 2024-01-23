@@ -29,7 +29,8 @@ class Classifier1D(ClassifierBaseModel):
             ],
             linear_channel_param = [
                 1024, 256, 128
-            ] 
+            ],
+            out_class_num = 8,
         ):
         super().__init__()
         self.save_hyperparameters()
@@ -50,16 +51,6 @@ class Classifier1D(ClassifierBaseModel):
             ])
         self.cnn = nn.Sequential(*cnn_list)
 
-        # self.cnn = nn.Sequential(
-        #     nn.Conv1d(in_channels=6, out_channels=32, kernel_size=8, padding=0, stride=3),
-        #     nn.ReLU(),
-        #     nn.Dropout(p=0.5),
-
-        #     nn.Conv1d(in_channels=32, out_channels=64, kernel_size=8, padding=0, stride=3),
-        #     nn.ReLU(),
-        #     nn.Dropout(p=0.5),
-        # )
-
         self.example_temp_out = self.cnn(self.example_input_array)
         lin_in_features = self.example_temp_out.shape[1:].numel()
 
@@ -74,25 +65,9 @@ class Classifier1D(ClassifierBaseModel):
             ])
             lin_in_features = lin_out_features
 
-        linear_list.append(nn.Linear(in_features=lin_in_features, out_features=8))
+        linear_list.append(nn.Linear(in_features=lin_in_features, out_features=out_class_num))
         self.linear = nn.Sequential(*linear_list)
 
-        # self.linear = nn.Sequential(
-        #     nn.Linear(in_features=lin_in_features, out_features=1024),
-        #     nn.BatchNorm1d(1024),
-        #     nn.ReLU(),
-
-        #     nn.Linear(in_features=1024, out_features=256),
-        #     nn.BatchNorm1d(256),
-        #     nn.ReLU(),
-
-        #     nn.Linear(in_features=256, out_features=128),
-        #     nn.BatchNorm1d(128),
-        #     nn.ReLU(),
-
-        #     nn.Linear(in_features=128, out_features=8),
-        # )
-    
     def forward(self, x):
         out = self.cnn(x)
         out = self.linear(out.view(out.shape[0], -1))

@@ -5,3 +5,4 @@
 *.pyc
 *.out
 /0*.py
+.ipynb_checkpoints
