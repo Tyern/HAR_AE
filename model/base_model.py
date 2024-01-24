@@ -48,6 +48,11 @@ class AEBaseModel(L.LightningModule):
         loss = F.mse_loss(output, x)
         self.log("test_mse", loss, prog_bar=False)
 
+    def predict_step(self,  batch, batch_idx) -> STEP_OUTPUT:
+        x, y = batch
+        output = self.forward(x)
+        return output
+
 
 class ClassifierBaseModel(L.LightningModule):
     def __init__(self):
@@ -86,3 +91,11 @@ class ClassifierBaseModel(L.LightningModule):
 
         acc = (torch.argmax(output, dim=1) == y).sum() / len(y)
         self.log("test_acc", acc, prog_bar=True)
+
+    def predict_step(self, batch, batch_idx):
+        x, y = batch
+        output = self.forward(x)
+
+        test_pred_label = torch.argmax(output, dim=1)
+        return test_pred_label
+        

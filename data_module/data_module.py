@@ -39,6 +39,10 @@ class FFTDataModule(L.LightningDataModule):
     def test_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
     
+    def predict_dataloader(self) -> EVAL_DATALOADERS:
+        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
+    
+
 class DefaultDataModule(L.LightningDataModule):
     def __init__(self, dataset_path: str, batch_size: int = 1024, prefix="", postfix=""):
         super().__init__()
@@ -69,4 +73,7 @@ class DefaultDataModule(L.LightningDataModule):
     def test_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
     
+    def predict_dataloader(self) -> EVAL_DATALOADERS:
+        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
+   
         
