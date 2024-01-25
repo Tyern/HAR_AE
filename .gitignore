@@ -4,5 +4,7 @@
 /.vscode
 *.pyc
 *.out
-/0*.py
+/[0-9]*_*.py
 .ipynb_checkpoints
+ProgramingEnvTest/lightning_logs
+ProgramingEnvTest/files/

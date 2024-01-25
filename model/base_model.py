@@ -19,7 +19,7 @@ from torch.optim import Optimizer
 class AEBaseModel(L.LightningModule):
     def __init__(self):
         super().__init__()
-
+    
     def configure_optimizers(self) -> OptimizerLRScheduler:
         if self.hparams.optimizer is None or self.hparams.optimizer_param is None:
             raise NotImplementedError("optimizer or optimizer_param have not been set")
@@ -27,7 +27,7 @@ class AEBaseModel(L.LightningModule):
         return self.hparams.optimizer(
             self.parameters(),
             **self.hparams.optimizer_param)
-    
+            
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
         x, y = batch
         output = self.forward(x)
