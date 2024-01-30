@@ -8,3 +8,6 @@
 .ipynb_checkpoints
 ProgramingEnvTest/lightning_logs
 ProgramingEnvTest/files/
+/ProgramingEnvTest/mnist
+/Ref/kidawara/scripts/mnist/data
+/Ref/kidawara/scripts/mnist/sample.npz
