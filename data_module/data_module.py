@@ -11,73 +11,6 @@ from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADER
 from data_module.custom_dataset import SimpleDataset, DoubleDataset
 from baal.active.heuristics import heuristics
 
-class FFTDataModule(L.LightningDataModule):
-    def __init__(self, dataset_path: str, batch_size: int = 1024, ):
-        super().__init__()
-        self.save_hyperparameters()
-        
-    def setup(self, stage=None):
-        dataset_path = self.hparams.dataset_path
-
-        fft_train_data = np.load(os.path.join(dataset_path, "torso_train_fft.npy"))
-        label_train_data = np.load(os.path.join(dataset_path, "torso_train_label.npy"))
-
-        fft_val_data = np.load(os.path.join(dataset_path, "torso_val_fft.npy"))
-        label_val_data = np.load(os.path.join(dataset_path, "torso_val_label.npy"))
-
-        fft_test_data = np.load(os.path.join(dataset_path, "torso_test_fft.npy"))
-        label_test_data = np.load(os.path.join(dataset_path, "torso_test_label.npy"))
-
-        self.train_set = SimpleDataset(fft_train_data, label_train_data)
-        self.val_set = SimpleDataset(fft_val_data, label_val_data)
-        self.test_set = SimpleDataset(fft_test_data, label_test_data)
-
-    def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.train_set, batch_size=self.hparams.batch_size, shuffle=True, pin_memory=True)
-    
-    def val_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.val_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-    
-    def test_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-    
-    def predict_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-    
-
-class DefaultDataModule(L.LightningDataModule):
-    def __init__(self, dataset_path: str, batch_size: int = 1024, prefix="", postfix=""):
-        super().__init__()
-        self.save_hyperparameters()
-        
-    def setup(self, stage=None):
-        dataset_path = self.hparams.dataset_path
-
-        fft_train_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "train" + self.hparams.postfix + ".npy"))
-        label_train_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "train_label.npy"))
-
-        fft_val_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "val" + self.hparams.postfix + ".npy"))
-        label_val_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "val_label.npy"))
-
-        fft_test_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "test" + self.hparams.postfix + ".npy"))
-        label_test_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "test_label.npy"))
-
-        self.train_set = SimpleDataset(fft_train_data, label_train_data)
-        self.val_set = SimpleDataset(fft_val_data, label_val_data)
-        self.test_set = SimpleDataset(fft_test_data, label_test_data)
-
-    def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.train_set, batch_size=self.hparams.batch_size, shuffle=True, pin_memory=True)
-    
-    def val_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.val_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-    
-    def test_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-    
-    def predict_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.test_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
-   
 
 class BaseDataModule(L.LightningDataModule):
     def __init__(self, 
@@ -138,6 +71,63 @@ class BaseDataModule(L.LightningDataModule):
     def predict_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.pred_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
    
+class FFTDataModule(BaseDataModule):
+    def __init__(self, dataset_path: str, batch_size: int = 1024, ):
+        super().__init__(batch_size)
+        self.save_hyperparameters()
+        
+    def setup(self, *args, **kwargs):
+        dataset_path = self.hparams.dataset_path
+
+        fft_train_data = np.load(os.path.join(dataset_path, "torso_train_fft.npy"))
+        label_train_data = np.load(os.path.join(dataset_path, "torso_train_label.npy"))
+
+        fft_val_data = np.load(os.path.join(dataset_path, "torso_val_fft.npy"))
+        label_val_data = np.load(os.path.join(dataset_path, "torso_val_label.npy"))
+
+        fft_test_data = np.load(os.path.join(dataset_path, "torso_test_fft.npy"))
+        label_test_data = np.load(os.path.join(dataset_path, "torso_test_label.npy"))
+
+        self.set_train_val_test_pred_data(
+            train_data = fft_train_data,
+            train_label = label_train_data,
+            val_data = fft_val_data,
+            val_label = label_val_data,
+            test_data = fft_test_data,
+            test_label = label_test_data,
+            pred_data = fft_test_data,
+        )
+        super().setup(*args, **kwargs)
+
+
+class DefaultDataModule(BaseDataModule):
+    def __init__(self, dataset_path: str, batch_size: int = 1024, prefix="", postfix=""):
+        super().__init__(batch_size=batch_size)
+        self.save_hyperparameters()
+        
+    def setup(self, stage=None):
+        dataset_path = self.hparams.dataset_path
+
+        fft_train_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "train" + self.hparams.postfix + ".npy"))
+        label_train_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "train_label.npy"))
+
+        fft_val_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "val" + self.hparams.postfix + ".npy"))
+        label_val_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "val_label.npy"))
+
+        fft_test_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "test" + self.hparams.postfix + ".npy"))
+        label_test_data = np.load(os.path.join(dataset_path, self.hparams.prefix + "test_label.npy"))
+
+        self.set_train_val_test_pred_data(
+            train_data = fft_train_data,
+            train_label = label_train_data,
+            val_data = fft_val_data,
+            val_label = label_val_data,
+            test_data = fft_test_data,
+            test_label = label_test_data,
+            pred_data = fft_test_data,
+        )
+        super().setup(*args, **kwargs)
+
 
 class ALDataModule_v1(BaseDataModule):
     SAMPLE_DICT = {
@@ -177,20 +167,20 @@ class ALDataModule_v1(BaseDataModule):
         self._test_label = train_val_test_10000_5classes_data["test_label"]
         self._additional_label = train_val_test_10000_5classes_data["additional_label"]
 
-
     def set_unsertainty_set(self, data, label, net_output):
         assert self.sampler_heuristic is not None
+        assert len(data) == len(label)
 
         if isinstance(net_output, list):
             output_concat = torch.concat(net_output)
         else:
             output_concat = net_output
 
-        self.rank = self.sampler_heuristic(output_concat)
+        self.sampling_rank = self.sampler_heuristic(output_concat)
 
         # get the k first sampler number (least confidence)
-        self._uncertainty_data = data[self.rank][:self.hparams.sampler_size]
-        self._uncertainty_label = label[self.rank][:self.hparams.sampler_size]
+        self._uncertainty_data = data[self.sampling_rank][:self.hparams.sampler_size]
+        self._uncertainty_label = label[self.sampling_rank][:self.hparams.sampler_size]
 
         self._train_uncertainty_data = np.concatenate([self._train_data, self._uncertainty_data])
         self._train_uncertainty_label = np.concatenate([self._train_label, self._uncertainty_label])
@@ -198,6 +188,41 @@ class ALDataModule_v1(BaseDataModule):
         self.set_train_val_test_pred_data(
             train_data=self._train_uncertainty_data,
             train_label=self._train_uncertainty_label,
+            val_data=self._val_data,
+            val_label=self._val_label,
+            test_data=self._test_data,
+            test_label=self._test_label,
+        )
+
+    def set_train_concat_set(self, data, label):
+        assert len(data) == len(label)
+        self._train_concat_data = np.concatenate([self._train_data, data])
+        self._train_concat_label = np.concatenate([self._train_label, label])
+
+        self.set_train_val_test_pred_data(
+            train_data=self._train_concat_data,
+            train_label=self._train_concat_label,
+            val_data=self._val_data,
+            val_label=self._val_label,
+            test_data=self._test_data,
+            test_label=self._test_label,
+        )
+
+    def set_random_set(self, data, label):
+        assert len(data) == len(label)
+
+        self.random_rank = np.arange(len(data))
+        np.random.shuffle(self.random_rank)
+
+        self._random_sample_data = data[self.random_rank][:self.hparams.sampler_size]
+        self._random_sample_label = label[self.random_rank][:self.hparams.sampler_size]
+
+        self._train_random_sample_data = np.concatenate([self._train_data, self._random_sample_data])
+        self._train_random_sample_label = np.concatenate([self._train_label, self._random_sample_label])
+
+        self.set_train_val_test_pred_data(
+            train_data=self._train_random_sample_data,
+            train_label=self._train_random_sample_label,
             val_data=self._val_data,
             val_label=self._val_label,
             test_data=self._test_data,
