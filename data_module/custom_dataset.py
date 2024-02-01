@@ -5,8 +5,8 @@ import numpy as np
 class SimpleDataset(Dataset):
     def __init__(self, data, label, normalize=False):
         super().__init__()
-        self.data = data.astype(np.float32)
-        self.label = label.astype(np.int64)
+        self.data = np.array(data).astype(np.float32)
+        self.label = np.array(label).astype(np.int64)
 
         assert len(self.data) == len(self.label)
 

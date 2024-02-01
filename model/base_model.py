@@ -96,6 +96,6 @@ class ClassifierBaseModel(L.LightningModule):
         x, y = batch
         output = self.forward(x)
 
-        test_pred_label = torch.argmax(output, dim=1)
-        return test_pred_label
+        # test_pred_label = torch.argmax(output, dim=1)
+        return output
         
