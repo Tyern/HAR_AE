@@ -132,7 +132,6 @@ class DefaultDataModule(BaseDataModule):
 class ALDataModule_v1(BaseDataModule):
     SAMPLE_DICT = {
         "uncertainty": heuristics.Certainty,
-        "bald": heuristics.BALD,
         "entropy": heuristics.Entropy,
         "margin": heuristics.Margin,
     }
