@@ -166,7 +166,48 @@ class ALDataModule_v1(BaseDataModule):
         self._test_label = train_val_test_10000_5classes_data["test_label"]
         self._additional_label = train_val_test_10000_5classes_data["additional_label"]
 
+    def set_only_train_data(self, train_data, train_label):
+        self.set_train_val_test_pred_data(
+            train_data = train_data,
+            train_label = train_label,
+            val_data = self._val_data,
+            val_label = self._val_label,
+            test_data = self._test_data,
+            test_label = self._test_label,
+            pred_data = self._test_data,
+        )
+
+    def set_normal_train(self):
+        print("set_normal_train")
+
+        self.set_only_train_data(self._train_data, self._train_label)
+
+    def limit_and_set_train_data(self, data, label, limit_number=-1):
+        print("limit_and_set_train_data", "limit_number=", limit_number)
+        assert len(data) == len(label)
+
+        if limit_number == -1:
+            self.set_only_train_data(data, label)
+        else:
+            choice_limited_list = []
+
+            label_set = set(label)
+            for i in label_set:
+                one_class_idx = np.where(label == i)[0]
+                choice_idx_list = np.random.choice(
+                    one_class_idx, 
+                    min(limit_number, len(one_class_idx)), 
+                    replace=False)
+                
+                choice_limited_list.extend(choice_idx_list)
+
+            limited_train_data = data[choice_limited_list]
+            limited_train_label = label[choice_limited_list]
+        
+            self.set_only_train_data(limited_train_data, limited_train_label)
+
     def set_unsertainty_set(self, data, label, net_output):
+        print("set_unsertainty_set")
         assert self.sampler_heuristic is not None
         assert len(data) == len(label)
 
@@ -183,31 +224,19 @@ class ALDataModule_v1(BaseDataModule):
 
         self._train_uncertainty_data = np.concatenate([self._train_data, self._uncertainty_data])
         self._train_uncertainty_label = np.concatenate([self._train_label, self._uncertainty_label])
-
-        self.set_train_val_test_pred_data(
-            train_data=self._train_uncertainty_data,
-            train_label=self._train_uncertainty_label,
-            val_data=self._val_data,
-            val_label=self._val_label,
-            test_data=self._test_data,
-            test_label=self._test_label,
-        )
+        
+        self.set_only_train_data(self._train_uncertainty_data, self._train_uncertainty_label)
 
     def set_train_concat_set(self, data, label):
+        print("set_train_concat_set")
         assert len(data) == len(label)
         self._train_concat_data = np.concatenate([self._train_data, data])
         self._train_concat_label = np.concatenate([self._train_label, label])
 
-        self.set_train_val_test_pred_data(
-            train_data=self._train_concat_data,
-            train_label=self._train_concat_label,
-            val_data=self._val_data,
-            val_label=self._val_label,
-            test_data=self._test_data,
-            test_label=self._test_label,
-        )
+        self.set_only_train_data(self._train_concat_data, self._train_concat_label)
 
     def set_random_set(self, data, label):
+        print("set_random_set")
         assert len(data) == len(label)
 
         self.random_rank = np.arange(len(data))
@@ -219,14 +248,7 @@ class ALDataModule_v1(BaseDataModule):
         self._train_random_sample_data = np.concatenate([self._train_data, self._random_sample_data])
         self._train_random_sample_label = np.concatenate([self._train_label, self._random_sample_label])
 
-        self.set_train_val_test_pred_data(
-            train_data=self._train_random_sample_data,
-            train_label=self._train_random_sample_label,
-            val_data=self._val_data,
-            val_label=self._val_label,
-            test_data=self._test_data,
-            test_label=self._test_label,
-        )
+        self.set_only_train_data(self._train_random_sample_data, self._train_random_sample_label)
 
 
 
