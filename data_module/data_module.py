@@ -189,7 +189,7 @@ class ALDataModule_v1(BaseDataModule):
         if limit_number == -1:
             self.set_only_train_data(data, label)
         else:
-            choice_limited_list = []
+            self.choice_limited_list = []
 
             label_set = set(label)
             for i in label_set:
@@ -199,10 +199,10 @@ class ALDataModule_v1(BaseDataModule):
                     min(limit_number, len(one_class_idx)), 
                     replace=False)
                 
-                choice_limited_list.extend(choice_idx_list)
+                self.choice_limited_list.extend(choice_idx_list)
 
-            limited_train_data = data[choice_limited_list]
-            limited_train_label = label[choice_limited_list]
+            limited_train_data = data[self.choice_limited_list]
+            limited_train_label = label[self.choice_limited_list]
         
             self.set_only_train_data(limited_train_data, limited_train_label)
 
