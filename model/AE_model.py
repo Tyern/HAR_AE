@@ -183,10 +183,11 @@ class AECNN1DBNModel(AEBaseModel):
             linear_channel_param = [
                 1024, 256, 128
             ],
+            in_feature_shape = 257,
         ):
         super().__init__()
         self.save_hyperparameters()
-        self.example_input_array = torch.rand(10, 6, 257)
+        self.example_input_array = torch.rand(10, 6, in_feature_shape)
         
         # define the cnn encoding sequential model
         enc_cnn_list = []
@@ -280,6 +281,165 @@ class AECNN1DBNModel(AEBaseModel):
                 nn.BatchNorm1d(cnn_channel[0]),
                 nn.ReLU(),
             ])
+
+        self.dec_cnn = nn.Sequential(*dec_cnn_list)
+
+    def forward(self, x):
+        out = self.enc_cnn(x)
+        out = self.enc_linear(out.view(out.shape[0], -1))
+        out = self.dec_linear(out)
+        out = self.dec_cnn(out.view(out.shape[0], *self.example_temp_out.shape[1:]))
+        return out
+
+
+class AE1DMaxPoolBNModel(AEBaseModel):
+    def __init__(
+            self, 
+            optimizer: Optimizer=None, 
+            optimizer_param: dict=None,
+            cnn_channel_param = [
+                (6, 32, 8, 0, 3),
+                (32, 64, 8, 0, 3)
+            ],
+            pool_channel_param = None,
+            linear_channel_param = [
+                1024, 256, 128
+            ],
+            bnorm=True,
+            upsampling_mode="nearest",
+            in_feature_shape=257,
+        ):
+        super().__init__()
+        self.save_hyperparameters()
+        self.example_input_array = torch.rand(10, 6, in_feature_shape)
+
+        enc_cnn_list = []
+        if pool_channel_param is None:
+            pool_channel_param = [None] * len(cnn_channel_param)
+
+        for cnn_channel, pool_channel in zip(cnn_channel_param, pool_channel_param):
+            enc_cnn_list.append(
+                nn.Conv1d(
+                    in_channels=cnn_channel[0], 
+                    out_channels=cnn_channel[1],
+                    kernel_size=cnn_channel[2], 
+                    padding=cnn_channel[3], 
+                    stride=cnn_channel[4]
+                )
+            )
+            
+            if pool_channel is not None:
+                enc_cnn_list.append(
+                    nn.MaxPool1d(
+                        kernel_size=pool_channel[0],
+                        stride=pool_channel[1],
+                        padding=pool_channel[2],
+                    )
+                )
+
+            if bnorm:
+                enc_cnn_list.append(
+                    nn.BatchNorm1d(num_features=cnn_channel[1])
+                ),
+
+            enc_cnn_list.append(
+                nn.ReLU(),
+            )
+
+        self.enc_cnn = nn.Sequential(*enc_cnn_list)
+        
+        # get the list of output windows size
+        output_window_size_list = [self.example_input_array.shape[-1]]
+        for layer_idx in range(len(enc_cnn_list)):
+            if isinstance(enc_cnn_list[layer_idx], nn.Conv1d):
+                cnn_temp = nn.Sequential(*enc_cnn_list[:layer_idx + 1])
+                with torch.inference_mode():
+                    out = cnn_temp(self.example_input_array)
+                    output_window_size_list.append(out.shape[-1])
+
+        # get the output of cnn encoding sequential model
+        with torch.inference_mode():
+            self.example_temp_out = self.enc_cnn(self.example_input_array)
+        lin_in_features = self.example_temp_out.shape[1:].numel()
+
+        # define the linear encoding sequential model
+        enc_linear_list = []
+        for linear_channel_idx in range(len(linear_channel_param)):
+
+            lin_out_features = linear_channel_param[linear_channel_idx]
+            enc_linear_list.extend([
+                nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
+                nn.BatchNorm1d(lin_out_features),
+                nn.ReLU(),
+            ])
+            lin_in_features = lin_out_features
+
+        self.enc_linear = nn.Sequential(*enc_linear_list)
+
+        # define the linear decoding sequential model
+        dec_linear_list = []
+        for linear_channel_idx in range(len(linear_channel_param) - 2, -1, -1):
+
+            lin_out_features = linear_channel_param[linear_channel_idx]
+            dec_linear_list.extend([
+                nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
+                nn.BatchNorm1d(lin_out_features),
+                nn.ReLU(),
+            ])
+            lin_in_features = lin_out_features
+
+        if len(linear_channel_param) > 0:
+            lin_out_features = self.example_temp_out.shape[1:].numel()
+            dec_linear_list.append(
+                nn.Sequential(
+                    nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
+                    nn.BatchNorm1d(lin_out_features),
+                    nn.ReLU(),
+                )
+            )
+        
+        self.dec_linear = nn.Sequential(*dec_linear_list)
+        
+        # define the cnn decoding sequential model
+        current_windows_size = output_window_size_list[-1]
+
+        dec_cnn_list = []
+        for cnn_channel_idx in range(len(cnn_channel_param) - 1, -1, -1):
+            pool_channel = pool_channel_param[cnn_channel_idx]
+            cnn_channel = cnn_channel_param[cnn_channel_idx]
+            
+            # calculate the difference the output and pre output padding
+            pre_pad_windows_size = (current_windows_size - 1)*cnn_channel[4] -2*cnn_channel[3] + cnn_channel[2]
+            current_windows_size = output_window_size_list[cnn_channel_idx]
+            
+            if pool_channel is not None:
+                dec_cnn_list.append(
+                    nn.Upsample(
+                        size=output_window_size_list[cnn_channel_idx + 1],
+                        mode=upsampling_mode
+                    )
+                )
+
+            next_pool = pool_channel_param[cnn_channel_idx - 1] if cnn_channel_idx - 1 > -1 else None 
+            dec_cnn_list.append(
+                nn.ConvTranspose1d(
+                    in_channels=cnn_channel[1], 
+                    out_channels=cnn_channel[0],
+                    kernel_size=cnn_channel[2], 
+                    padding=cnn_channel[3], 
+                    stride=cnn_channel[4],
+                    output_padding=current_windows_size - pre_pad_windows_size if next_pool is None else 0
+                ),
+            )
+            
+            if bnorm:
+                dec_cnn_list.append(
+                    nn.BatchNorm1d(num_features=cnn_channel[0])
+                ),
+
+            dec_cnn_list.append(
+                nn.ReLU(),
+            )
 
         self.dec_cnn = nn.Sequential(*dec_cnn_list)
 
