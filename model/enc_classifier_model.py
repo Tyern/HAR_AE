@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, Dataset
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 from torch.optim import Optimizer
 
-from model.AE_model import AE1D_simple, AECNN1DModel
+from model.AE_model import AE1D_simple, AECNN1DModel, AE1DMaxPoolBNModel
 from model.base_model import ClassifierBaseModel
 
 class AE1DClassifier_simple(ClassifierBaseModel):
@@ -89,6 +89,61 @@ class AE1DClassifier(ClassifierBaseModel):
                 classifier_linear_list.extend([
                     nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
                     nn.BatchNorm1d(lin_out_features),
+                    nn.ReLU(),
+                ])
+
+            lin_in_features = lin_out_features
+
+        classifier_linear_list.append(
+            nn.Linear(in_features=lin_in_features, out_features=out_features)
+        )
+
+        self.classifier_linear = nn.Sequential(*classifier_linear_list)
+
+    def forward(self, x):
+        out = self.encoder(x)
+        out = self.enc_linear(out.view(out.shape[0], -1))
+        out = self.classifier_linear(out)
+        return out
+
+class AE1DMaxPoolBNClassifierModel(ClassifierBaseModel):
+    def __init__(self,
+            AE1DMaxPoolBN_ckpt_path, 
+            optimizer: Optimizer=None, 
+            optimizer_param: dict=None, 
+            linear_channel_param=[1024, 256, 128], 
+            bnorm=True,
+            out_features=8,
+            in_feature_shape=257,
+        ):
+        super().__init__()
+        self.save_hyperparameters()
+        self.example_input_array = torch.rand(10, 6, in_feature_shape)
+        self.feature_extractor = AE1DMaxPoolBNModel.load_from_checkpoint(AE1DMaxPoolBN_ckpt_path).to(self.device)
+        self.feature_extractor.freeze()
+
+        self.encoder = self.feature_extractor.enc_cnn
+        self.enc_linear = self.feature_extractor.enc_linear
+
+        with torch.inference_mode():
+            out = self.encoder(self.example_input_array)
+            self.example_temp_out = self.enc_linear(out.view(out.shape[0], -1))
+
+        lin_in_features = self.example_temp_out.shape[1:].numel()
+
+        classifier_linear_list = []
+        for linear_channel_idx in range(len(linear_channel_param)):
+            lin_out_features = linear_channel_param[linear_channel_idx]
+
+            if bnorm:
+                classifier_linear_list.extend([
+                    nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
+                    nn.BatchNorm1d(lin_out_features),
+                    nn.ReLU(),
+                ])
+            else:
+                classifier_linear_list.extend([
+                    nn.Linear(in_features=lin_in_features, out_features=lin_out_features),
                     nn.ReLU(),
                 ])
 
