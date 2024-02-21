@@ -130,6 +130,8 @@ class DefaultDataModule(BaseDataModule):
 
 
 class ALDataModule_v1(BaseDataModule):
+    LABEL_RANGE = range(1, 8)
+    LABEL_CLASS_NAME = ["still", "walking", "run", "bike", "car", "bus", "train", "subway"]
     SAMPLE_DICT = {
         "uncertainty": heuristics.Certainty,
         "entropy": heuristics.Entropy,
@@ -206,6 +208,31 @@ class ALDataModule_v1(BaseDataModule):
         
             self.set_only_train_data(limited_train_data, limited_train_label)
 
+    def reduce_one_class_number(self, data, label, target_class, target_class_data_num):
+        print("reduce_one_class_number", "target_class=", target_class, "target_class_data_num=", target_class_data_num)
+        assert len(data) == len(label)
+
+        if target_class_data_num == -1:
+            raise NotImplementedError()
+        else:
+            self.reduce_one_class_choice_list = []
+
+            target_class_idx = np.where(label == target_class)[0]
+            different_class_idx = np.where(label != target_class)[0]
+
+            choice_idx_list = np.random.choice(
+                target_class_idx, 
+                min(target_class_data_num, len(target_class_idx)), 
+                replace=False)
+            
+            self.reduce_one_class_choice_list = np.concatenate([choice_idx_list, different_class_idx])
+
+            limited_data = data[self.reduce_one_class_choice_list]
+            limited_label = label[self.reduce_one_class_choice_list]
+
+            return limited_data, limited_label
+
+
     def set_unsertainty_set(self, data, label, net_output):
         print("set_unsertainty_set")
         assert self.sampler_heuristic is not None
@@ -222,8 +249,8 @@ class ALDataModule_v1(BaseDataModule):
         self._uncertainty_data = data[self.sampling_rank][:self.hparams.sampler_size]
         self._uncertainty_label = label[self.sampling_rank][:self.hparams.sampler_size]
 
-        self._train_uncertainty_data = np.concatenate([self._train_data, self._uncertainty_data])
-        self._train_uncertainty_label = np.concatenate([self._train_label, self._uncertainty_label])
+        self._train_uncertainty_data = np.concatenate([self.train_data, self._uncertainty_data])
+        self._train_uncertainty_label = np.concatenate([self.train_label, self._uncertainty_label])
         
         self.set_only_train_data(self._train_uncertainty_data, self._train_uncertainty_label)
 
@@ -245,8 +272,8 @@ class ALDataModule_v1(BaseDataModule):
         self._random_sample_data = data[self.random_rank][:self.hparams.sampler_size]
         self._random_sample_label = label[self.random_rank][:self.hparams.sampler_size]
 
-        self._train_random_sample_data = np.concatenate([self._train_data, self._random_sample_data])
-        self._train_random_sample_label = np.concatenate([self._train_label, self._random_sample_label])
+        self._train_random_sample_data = np.concatenate([self.train_data, self._random_sample_data])
+        self._train_random_sample_label = np.concatenate([self.train_label, self._random_sample_label])
 
         self.set_only_train_data(self._train_random_sample_data, self._train_random_sample_label)
 

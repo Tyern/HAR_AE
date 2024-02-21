@@ -22,5 +22,7 @@ def limit_filter_data_by_class(data, label, limit_number=-1):
 
         limited_train_data = data[choice_limited_list]
         limited_train_label = label[choice_limited_list]
+
+        print("limit_filter_data_by_class: ", np.unique(limited_train_label, return_counts=True))
     
         return (limited_train_data, limited_train_label, np.array(choice_limited_list))
