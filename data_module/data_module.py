@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 
 from data_module.custom_dataset import SimpleDataset, DoubleDataset
+from utils.data_utils import limit_filter_data_by_class, merge_data_set
 from baal.active.heuristics import heuristics
 
 
@@ -187,26 +188,8 @@ class ALDataModule_v1(BaseDataModule):
     def limit_and_set_train_data(self, data, label, limit_number=-1):
         print("limit_and_set_train_data", "limit_number=", limit_number)
         assert len(data) == len(label)
-
-        if limit_number == -1:
-            self.set_only_train_data(data, label)
-        else:
-            self.choice_limited_list = []
-
-            label_set = set(label)
-            for i in label_set:
-                one_class_idx = np.where(label == i)[0]
-                choice_idx_list = np.random.choice(
-                    one_class_idx, 
-                    min(limit_number, len(one_class_idx)), 
-                    replace=False)
-                
-                self.choice_limited_list.extend(choice_idx_list)
-
-            limited_train_data = data[self.choice_limited_list]
-            limited_train_label = label[self.choice_limited_list]
-        
-            self.set_only_train_data(limited_train_data, limited_train_label)
+        limited_train_data, limited_train_label, self.choice_limited_list = limit_filter_data_by_class(data, label, limit_number)
+        self.set_only_train_data(limited_train_data, limited_train_label)
 
     def reduce_one_class_number(self, data, label, target_class, target_class_data_num):
         print("reduce_one_class_number", "target_class=", target_class, "target_class_data_num=", target_class_data_num)
@@ -277,5 +260,101 @@ class ALDataModule_v1(BaseDataModule):
 
         self.set_only_train_data(self._train_random_sample_data, self._train_random_sample_label)
 
+    def set_train_val_test_pred_merge_data(
+            self, 
+            train_data=None, 
+            train_label=None,
+            val_data=None, 
+            val_label=None, 
+            test_data=None, 
+            test_label=None, 
+            label_merge_dict=None, 
+            train_limit_number=None, 
+            val_limit_number=None, 
+            test_limit_number=None,
+            seed=None):
 
+        print("set_train_val_test_pred_merge_data")
+        limited_train_data, limited_train_label, limited_val_data, limited_val_label, limited_test_data, limited_test_label = None, None, None, None, None, None
+
+        if any([train_data is not None, train_label is not None, label_merge_dict is not None, train_limit_number is not None]):
+            if not all([train_data is not None, train_label is not None, label_merge_dict is not None, train_limit_number is not None]):
+                raise "train data missing argument"
+            assert len(train_data) == len(train_label)
+                
+            new_train_label = merge_data_set(train_label, label_merge_dict=label_merge_dict)
+            limited_train_data, limited_train_label, _ = limit_filter_data_by_class(train_data, new_train_label, train_limit_number, seed=seed)
+        
+        if any([val_data is not None, val_label is not None, label_merge_dict is not None, val_limit_number is not None]):
+            if not all([val_data is not None, val_label is not None, label_merge_dict is not None, val_limit_number is not None]):
+                raise "val data missing argument"
+            assert len(val_data) == len(val_label)
+                
+            new_val_label = merge_data_set(val_label, label_merge_dict=label_merge_dict)
+            limited_val_data, limited_val_label, _ = limit_filter_data_by_class(val_data, new_val_label, val_limit_number, seed=seed)
+
+        if any([test_data is not None, test_label is not None, label_merge_dict is not None, test_limit_number is not None]):
+            if not all([test_data is not None, test_label is not None, label_merge_dict is not None, test_limit_number is not None]):
+                raise "test data missing argument"
+            assert len(test_data) == len(test_label)
+                
+            new_test_label = merge_data_set(test_label, label_merge_dict=label_merge_dict)
+            limited_test_data, limited_test_label, _ = limit_filter_data_by_class(test_data, new_test_label, test_limit_number, seed=seed)
+
+        self.set_train_val_test_pred_data(
+            train_data = limited_train_data,
+            train_label = limited_train_label,
+            val_data = limited_val_data,
+            val_label = limited_val_label,
+            test_data = limited_test_data,
+            test_label = limited_test_label,
+            pred_data = limited_test_data,
+        )
+
+    def limit_and_set_train_val_test_pred_data(
+            self, 
+            train_data=None, 
+            train_label=None,
+            val_data=None, 
+            val_label=None, 
+            test_data=None, 
+            test_label=None, 
+            train_limit_number=None, 
+            val_limit_number=None, 
+            test_limit_number=None,
+            seed=None):
+
+        print("set_train_val_test_pred_merge_data")
+        limited_train_data, limited_train_label, limited_val_data, limited_val_label, limited_test_data, limited_test_label = None, None, None, None, None, None
+
+        if any([train_data is not None, train_label is not None, train_limit_number is not None]):
+            if not all([train_data is not None, train_label is not None, train_limit_number is not None]):
+                raise "train data missing argument"
+            assert len(train_data) == len(train_label)
+                
+            limited_train_data, limited_train_label, _ = limit_filter_data_by_class(train_data, train_label, train_limit_number, seed=seed)
+        
+        if any([val_data is not None, val_label is not None, val_limit_number is not None]):
+            if not all([val_data is not None, val_label is not None, val_limit_number is not None]):
+                raise "val data missing argument"
+            assert len(val_data) == len(val_label)
+                
+            limited_val_data, limited_val_label, _ = limit_filter_data_by_class(val_data, val_label, val_limit_number, seed=seed)
+
+        if any([test_data is not None, test_label is not None, test_limit_number is not None]):
+            if not all([test_data is not None, test_label is not None, test_limit_number is not None]):
+                raise "test data missing argument"
+            assert len(test_data) == len(test_label)
+                
+            limited_test_data, limited_test_label, _ = limit_filter_data_by_class(test_data, test_label, test_limit_number, seed=seed)
+
+        self.set_train_val_test_pred_data(
+            train_data = limited_train_data,
+            train_label = limited_train_label,
+            val_data = limited_val_data,
+            val_label = limited_val_label,
+            test_data = limited_test_data,
+            test_label = limited_test_label,
+            pred_data = limited_test_data,
+        )
 
