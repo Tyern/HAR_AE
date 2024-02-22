@@ -61,7 +61,7 @@ class BaseDataModule(L.LightningDataModule):
         self.pred_set = SimpleDataset(self.pred_data, np.zeros([len(self.pred_data)]))
         
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.train_set, batch_size=self.hparams.batch_size, shuffle=True, pin_memory=True)
+        return DataLoader(self.train_set, batch_size=self.hparams.batch_size, shuffle=True, pin_memory=True, drop_last=True)
     
     def val_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.val_set, batch_size=self.hparams.batch_size, shuffle=False, pin_memory=True)
@@ -279,7 +279,7 @@ class ALDataModule_v1(BaseDataModule):
 
         if any([train_data is not None, train_label is not None, label_merge_dict is not None, train_limit_number is not None]):
             if not all([train_data is not None, train_label is not None, label_merge_dict is not None, train_limit_number is not None]):
-                raise "train data missing argument"
+                raise ValueError("train data missing argument")
             assert len(train_data) == len(train_label)
                 
             new_train_label = merge_data_set(train_label, label_merge_dict=label_merge_dict)
@@ -287,7 +287,7 @@ class ALDataModule_v1(BaseDataModule):
         
         if any([val_data is not None, val_label is not None, label_merge_dict is not None, val_limit_number is not None]):
             if not all([val_data is not None, val_label is not None, label_merge_dict is not None, val_limit_number is not None]):
-                raise "val data missing argument"
+                raise ValueError("val data missing argument")
             assert len(val_data) == len(val_label)
                 
             new_val_label = merge_data_set(val_label, label_merge_dict=label_merge_dict)
@@ -295,7 +295,7 @@ class ALDataModule_v1(BaseDataModule):
 
         if any([test_data is not None, test_label is not None, label_merge_dict is not None, test_limit_number is not None]):
             if not all([test_data is not None, test_label is not None, label_merge_dict is not None, test_limit_number is not None]):
-                raise "test data missing argument"
+                raise ValueError("test data missing argument")
             assert len(test_data) == len(test_label)
                 
             new_test_label = merge_data_set(test_label, label_merge_dict=label_merge_dict)
@@ -329,21 +329,21 @@ class ALDataModule_v1(BaseDataModule):
 
         if any([train_data is not None, train_label is not None, train_limit_number is not None]):
             if not all([train_data is not None, train_label is not None, train_limit_number is not None]):
-                raise "train data missing argument"
+                raise ValueError("train data missing argument")
             assert len(train_data) == len(train_label)
                 
             limited_train_data, limited_train_label, _ = limit_filter_data_by_class(train_data, train_label, train_limit_number, seed=seed)
         
         if any([val_data is not None, val_label is not None, val_limit_number is not None]):
             if not all([val_data is not None, val_label is not None, val_limit_number is not None]):
-                raise "val data missing argument"
+                raise ValueError("val data missing argument")
             assert len(val_data) == len(val_label)
                 
             limited_val_data, limited_val_label, _ = limit_filter_data_by_class(val_data, val_label, val_limit_number, seed=seed)
 
         if any([test_data is not None, test_label is not None, test_limit_number is not None]):
             if not all([test_data is not None, test_label is not None, test_limit_number is not None]):
-                raise "test data missing argument"
+                raise ValueError("test data missing argument")
             assert len(test_data) == len(test_label)
                 
             limited_test_data, limited_test_label, _ = limit_filter_data_by_class(test_data, test_label, test_limit_number, seed=seed)

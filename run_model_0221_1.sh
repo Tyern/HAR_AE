@@ -1,7 +1,7 @@
 ModelVal="4cnn_64"
-TrainValTestLimitData="100 500"
+TrainValTestLimitData="500"
 ClassNum="8"
-RadnSeed="1 2 3 4 5"
+RadnSeed="6 7 8 9 10"
 
 python_file="10.3_classify_nclasses.py"
 
